@@ -52,6 +52,10 @@ docker-compose --profile full up -d
 ### Grafana (`grafana/`)
 - `datasources/prometheus.yml` - Prometheus data source configuration
 - `dashboards/dashboard.yml` - Dashboard provisioning configuration
+- `dashboards/usage-analytics-dashboard.json` - Usage analytics visualization dashboard
+
+### PostgreSQL Exporter (`postgres_exporter/`)
+- `queries.yaml` - Custom SQL queries for usage analytics metrics
 
 ### AlertManager (`alertmanager/`)
 - `alertmanager.yml` - Alert routing and notification configuration
@@ -98,6 +102,21 @@ docker-compose --profile full up -d
 - **Custom**: Extend AlertManager configuration for Slack, PagerDuty, etc.
 
 ## Grafana Dashboards
+
+### Usage Analytics Dashboard
+**Location**: `grafana/dashboards/usage-analytics-dashboard.json`  
+**URL**: http://localhost:3001/d/usage-analytics
+
+Comprehensive user behavior and application usage visualization:
+- Real-time page view metrics and trends
+- Daily and hourly active user tracking
+- Session duration and engagement analysis
+- Top visited routes with performance metrics
+- Most active users and their behavior patterns
+- Traffic source analysis (referrers)
+- User action type distribution
+
+See `grafana/dashboards/README.md` for detailed usage instructions.
 
 ### Executive Overview
 - System health at a glance

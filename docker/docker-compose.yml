@@ -498,6 +498,8 @@ services:
     environment:
       DATA_SOURCE_NAME: "postgresql://${POSTGRES_USER:-case-study}:${POSTGRES_PASSWORD:-password}@postgres:5432/${POSTGRES_DB:-case-study}?sslmode=disable"
       PG_EXPORTER_EXTEND_QUERY_PATH: "/etc/postgres_exporter/queries.yaml"
+    volumes:
+      - ../monitoring/postgres_exporter/queries.yaml:/etc/postgres_exporter/queries.yaml:ro
     networks:
       - case-study-network
     depends_on:

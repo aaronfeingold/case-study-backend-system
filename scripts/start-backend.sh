@@ -1,74 +1,91 @@
 #!/bin/bash
 
-# Case Study Invoice Intelligence Development Startup Script
-echo "🚀 Starting Case Study Invoice Intelligence System..."
+# Case Study Monitoring Stack Startup Script
+# This script starts the complete monitoring infrastructure
 
-# Check if .env file exists
+set -e
+
+# Color definitions
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+CYAN='\033[0;36m'
+NC='\033[0m' # No Color
+
+echo -e "${CYAN}Starting Case Study Monitoring Stack...${NC}"
+
+# Change to the docker directory
+cd "$(dirname "$0")/../docker"
+
+# Check if .env file exists, use backend/api/.env if not
 if [ ! -f .env ]; then
-    echo "⚠️  .env file not found. Copying from .env.example..."
-    cp .env.example .env
-    echo "📝 Please edit .env file with your configuration before continuing."
-    exit 1
+    echo -e "${YELLOW}No .env file found, copying from backend/api/.env...${NC}"
+    if [ -f ../api/.env ]; then
+        cp ../api/.env .env
+        echo -e "${GREEN}.env file copied successfully${NC}"
+    else
+        echo -e "${RED}Error: backend/api/.env not found${NC}"
+        exit 1
+    fi
 fi
 
-# Load environment variables
-export $(cat .env | grep -v '^#' | xargs)
+# Start the monitoring stack
+echo -e "${YELLOW}Starting monitoring services...${NC}"
+docker-compose --profile monitoring up -d
 
-# Change to docker directory
-cd docker
-
-# Start the services based on profile
-case "${1:-full}" in
-    "db")
-        echo "🐳 Starting database services only..."
-        docker-compose --profile local-db up -d
-        ;;
-    "api")
-        echo "🔧 Starting API services..."
-        docker-compose --profile api up -d
-        ;;
-    "worker")
-        echo "⚙️  Starting worker services..."
-        docker-compose --profile worker up -d
-        ;;
-    "monitoring")
-        echo "📊 Starting monitoring services..."
-        docker-compose --profile monitoring up -d
-        ;;
-    "full")
-        echo "🐳 Starting all services..."
-        docker-compose --profile full up -d
-        ;;
-    *)
-        echo "Usage: $0 [db|api|worker|monitoring|full]"
-        echo "  db        - Start database services only"
-        echo "  api       - Start API services"
-        echo "  worker    - Start worker services"
-        echo "  monitoring - Start monitoring services"
-        echo "  full      - Start all services (default)"
-        exit 1
-        ;;
-esac
-
-# Wait for services to be ready
-echo "⏳ Waiting for services to be ready..."
+echo -e "${YELLOW}Waiting for services to be ready...${NC}"
 sleep 10
 
-# Check if services are healthy
-echo "🔍 Checking service health..."
-docker-compose ps
+# Health check function
+check_service() {
+    local service_name=$1
+    local url=$2
+    local max_attempts=30
+    local attempt=1
 
-echo "✅ Case Study system started!"
-echo "🔗 API available at: http://localhost:8000"
-echo "🌐 Frontend available at: http://localhost:3000"
-echo "📊 Flower monitoring at: http://localhost:5555 (if started)"
+    while [ $attempt -le $max_attempts ]; do
+        if curl -s -f "$url" > /dev/null 2>&1; then
+            echo -e "${GREEN}$service_name is ready${NC}"
+            return 0
+        fi
+        echo -e "${YELLOW}Waiting for $service_name (attempt $attempt/$max_attempts)...${NC}"
+        sleep 2
+        ((attempt++))
+    done
+    echo -e "${RED}$service_name failed to start${NC}"
+    return 1
+}
+
+# Check if services are ready
+echo -e "${CYAN}Performing health checks...${NC}"
+check_service "Prometheus" "http://localhost:9090/-/healthy"
+check_service "Grafana" "http://localhost:3001/api/health"
+check_service "Node Exporter" "http://localhost:9100/metrics"
+
+# Show service URLs
 echo ""
-echo "📝 To view logs: docker-compose logs -f [service-name]"
-echo "🛑 To stop: docker-compose down"
+echo -e "${GREEN}Case Study Monitoring Stack is ready!${NC}"
 echo ""
-echo "Available services:"
-echo "  - case-study-postgres (Database)"
-echo "  - case-study-redis (Message broker)"
-echo "  - case-study-api (Flask API)"
-echo "  - case-study-worker (Celery worker)"
-echo "  - case-study-flower (Monitoring)"
+echo -e "${CYAN}Monitoring Services:${NC}"
+echo "  Prometheus:     http://localhost:9090"
+echo "  Grafana:        http://localhost:3001 (admin/admin)"
+echo "  AlertManager:   http://localhost:9093"
+echo "  Node Exporter:  http://localhost:9100"
+echo ""
+echo -e "${BLUE}Infrastructure Services:${NC}"
+echo "  PostgreSQL:     localhost:5433"
+echo "  Redis:          localhost:6379"
+echo ""
+echo -e "${YELLOW}Application Services (if running):${NC}"
+echo "  Flask API:      http://localhost:8000"
+echo "  Celery Flower:  http://localhost:5555"
+echo ""
+echo "To start all services including the app:"
+echo "  docker-compose --profile full up -d"
+echo ""
+echo "To stop all services:"
+echo "  docker-compose down"
+echo ""
+echo "To view logs:"
+echo "  docker-compose logs -f [service-name]"
